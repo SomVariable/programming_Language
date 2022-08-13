@@ -5,6 +5,8 @@ function parseExpression(program){
         expr = {type: "value", value: match[1]};
     }else if(match = /^\d+\b/.exec(program)){
         expr = {type: "value", value: Number(match[0])};
+    }else if(match = /^'\D+\b'/.exec(program)){
+        expr = {type: "value", value: String(match[0])};
     }else if(match = /^[^\s(),"]+/.exec(program)){
         expr = {type: "word", name: match[0]};
     }else{
@@ -109,6 +111,30 @@ specialForms["define"] = function(args, env) {
     return value
 }
 
+specialForms["fun"] = function(args, env){
+    if(!args.length) throw new SyntaxError("Function need body")
+
+    function name(expr) {
+        if(expr.type !== "word") throw new SyntaxError("Argument names need to be with 'word' type")
+
+        return expr.name;
+    }
+
+    const argNames = args.slice(0, args.length - 1).map(name);
+    const body = args[args.length - 1];
+
+    return function() {
+        if(arguments.length !== argNames.length) throw new TypeError("Wrong number of arguments")
+        const localEnv = Object.create(env);
+
+        for(let i = 0; i < arguments.length; i++){
+            localEnv[argNames[i]] = arguments[i];
+        }
+
+        return evaluate(body, localEnv)
+    }
+}
+
 //env
 
 const topEnv = {}
@@ -134,19 +160,55 @@ function run(){
 
 console.log(`
 run("do(define(total, 0),",
-"   define(count, 1),",
-"   while(<(count, 11),",
-"         do(define(total, +(total, count)),",
-"            define(count, +(count, 1)))),",
-"   print(total))")
-`);
+        "   define(count, 1),",
+        "   while(<(count, 11),",
+        "         do(define(total, +(total, count)),",
+        "            define(count, +(count, 1)))),",
+        "   print(total))")
+        `);
 
 console.log(run("do(define(total, 0),",
-    "   define(count, 1),",
-    "   while(<(count, 11),",
-    "         do(define(total, +(total, count)),",
-    "            define(count, +(count, 1)))),",
-    "   print(total))")
-    )
+                "   define(count, 1),",
+                "   while(<(count, 11),",
+                "         do(define(total, +(total, count)),",
+                "            define(count, +(count, 1)))),",
+                "   print(total))")
+                )
 
+
+console.log(`
+            run("do(define(plusOne, fun(a, +(a, 1))),",
+            "   print(plusOne(10)))")
+            `);
+
+console.log(run("do(define(plusOne, fun(a, +(a, 1))),",
+                "   print(plusOne(10)))")
+                )
+
+
+console.log(`
+            run("do(define(pow, fun(base, exp,",
+            "   print(plusOne(10)))",
+            "   print(plusOne(10)))",
+            "   print(plusOne(10)))",
+            "   print(plusOne(10)))")
+            `);
+    
+console.log(run("do(define(pow, fun(base, exp,",
+                    "   if(==(exp, 0),",
+                    "   1,",
+                    "   *(base, pow(base, -(exp, 1)))))),",
+                    "   print(pow(2, 10)))"
+                )
+            )
+
+
+console.log(`
+            run("do(define(hereItIs, 'HELLO WORLD',",
+            "   print(hereItIs)")
+            `);
+
+console.log(run("do(define(hereItIs, 'HELLO WORLD'),",
+                "   print(hereItIs))")
+                )
 
